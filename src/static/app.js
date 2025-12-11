@@ -23,21 +23,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // Build participants list HTML
         let participantsHTML = "";
         if (details.participants.length > 0) {
-          participantsHTML = `
-            <div class="participants-section">
-              <strong>Participants:</strong>
-              <ul class="participants-list">
-                ${details.participants.map(email => `<li>${email}</li>`).join("")}
-              </ul>
-            </div>
-          `;
+          participantsHTML = `<div class="participants-section"><strong>Participants:</strong><ul class="participants-list" id="participants-list-${name}"></ul></div>`;
         } else {
-          participantsHTML = `
-            <div class="participants-section">
-              <strong>Participants:</strong>
-              <p class="no-participants">No participants yet.</p>
-            </div>
-          `;
+          participantsHTML = `<div class="participants-section"><strong>Participants:</strong><p class="no-participants">No participants yet.</p></div>`;
         }
 
         activityCard.innerHTML = `
@@ -49,6 +37,30 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+        // Render participants with delete icon if any
+        if (details.participants.length > 0) {
+          const ul = activityCard.querySelector(`#participants-list-${name}`);
+          details.participants.forEach((email, idx) => {
+            const li = document.createElement('li');
+            li.className = 'participant-row';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = email;
+            li.appendChild(nameSpan);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-icon';
+            deleteBtn.innerHTML = '&#128465;'; // trash icon
+            deleteBtn.title = 'Unregister participant';
+            deleteBtn.onclick = async () => {
+              await unregisterParticipant(name, email);
+            };
+            li.appendChild(deleteBtn);
+
+            ul.appendChild(li);
+          });
+        }
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -83,6 +95,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Immediately refresh activities list so UI updates
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -101,6 +115,22 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error signing up:", error);
     }
   });
+
+  // Unregister participant function
+  async function unregisterParticipant(activityName, email) {
+    try {
+      const response = await fetch(`/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`, {
+        method: "POST"
+      });
+      if (response.ok) {
+        fetchActivities();
+      } else {
+        alert("Failed to unregister participant.");
+      }
+    } catch (error) {
+      alert("Error unregistering participant.");
+    }
+  }
 
   // Initialize app
   fetchActivities();
